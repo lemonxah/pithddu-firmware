@@ -13,3 +13,10 @@ idf_component_register(
     INCLUDE_DIRS "."
     REQUIRES esp_tinyusb led_strip lovyangfx esp_timer driver json nvs_flash app_update esp_hw_support
 )
+
+# Bake the board id (from -DBOARD=<id>, default xiao_s3) into the binary so the
+# device can report which controller it was built for in the @CAP handshake.
+if(NOT DEFINED BOARD)
+    set(BOARD "xiao_s3")
+endif()
+target_compile_definitions(${COMPONENT_LIB} PRIVATE PITHDDU_BOARD="${BOARD}")

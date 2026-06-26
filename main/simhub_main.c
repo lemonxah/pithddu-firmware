@@ -227,16 +227,19 @@ static void handle_line(int itf, const char *line)
         const device_pins_t *p = device_pins_get();
         const ui_profile_t *prof = ui_active_profile();
         int button_pages = prof ? prof->page_count : 0;   // actual configured pages, not a constant
-        char cap[560];
+#ifndef PITHDDU_BOARD
+#define PITHDDU_BOARD "unknown"
+#endif
+        char cap[600];
         snprintf(cap, sizeof(cap),
-            "{\"name\":\"Pith DDU\",\"fw\":\"0.9.2\",\"serial\":\"%s\",\"buttonPages\":%d,"
+            "{\"name\":\"Pith DDU\",\"fw\":\"0.9.2\",\"board\":\"%s\",\"serial\":\"%s\",\"buttonPages\":%d,"
             "\"screens\":[{\"role\":\"main\",\"w\":480,\"h\":320,\"touch\":true},"
             "{\"role\":\"side\",\"w\":480,\"h\":320,\"touch\":true}],"
             "\"leds\":{\"rev\":12,\"tc\":2,\"abs\":2,\"separate\":true},"
             "\"pins\":{\"sclk\":%d,\"mosi\":%d,\"miso\":%d,\"dc\":%d,"
             "\"disp1_cs\":%d,\"disp2_cs\":%d,\"touch1_cs\":%d,\"touch2_cs\":%d,\"led_din\":%d,"
             "\"race_screen\":%d,\"led_rev\":%d,\"led_tc\":%d,\"led_abs\":%d,\"led_rgbw\":%d}}\n",
-            device_serial_get(), button_pages,
+            PITHDDU_BOARD, device_serial_get(), button_pages,
             p->sclk, p->mosi, p->miso, p->dc, p->disp1_cs, p->disp2_cs,
             p->touch1_cs, p->touch2_cs, p->led_din, p->race_screen,
             p->led_rev, p->led_tc, p->led_abs, p->led_rgbw);
