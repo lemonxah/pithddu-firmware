@@ -50,11 +50,15 @@ jobs:
           Or, from the firmware repo:  idf.py -DBOARD=${{ matrix.board }} -p <PORT> flash
           EOF
           zip -r "$out.zip" "$out"
+          # Bare app image for OTA (the dashboard downloads this directly by board name).
+          cp build/pithddu.bin "$out.bin"
 
       - uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ matrix.board }}
-          path: pithddu-${{ matrix.board }}.zip
+          path: |
+            pithddu-${{ matrix.board }}.zip
+            pithddu-${{ matrix.board }}.bin
           if-no-files-found: error
 
   release:
@@ -70,6 +74,8 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/**/*.zip
+          files: |
+            dist/**/*.zip
+            dist/**/*.bin
           generate_release_notes: true
           fail_on_unmatched_files: true
