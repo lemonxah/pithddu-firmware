@@ -1,0 +1,40 @@
+name: firmware
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { board: xiao_s3,    target: esp32s3 }
+          - { board: devkitc_s3, target: esp32s3 }
+          - { board: devkit_s2,  target: esp32s2 }
+          - { board: s2_mini,    target: esp32s2 }
+    name: ${{ matrix.board }} (${{ matrix.target }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build firmware
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: release-v5.5
+          target: ${{ matrix.target }}
+          command: idf.py -DBOARD=${{ matrix.board }} build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.board }}
+          path: |
+            build/pithddu.bin
+            build/bootloader/bootloader.bin
+            build/partition_table/partition-table.bin
+            build/ota_data_initial.bin
+          if-no-files-found: error
