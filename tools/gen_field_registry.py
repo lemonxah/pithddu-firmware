@@ -5,15 +5,18 @@
 #   main/field_registry_gen.h                 (device, C)  — table + field_value() resolver
 #   pith-dashboard/src/field_registry_gen.hpp (app, C++)   — table for the field dropdown
 #
-# Run with no arguments (paths are resolved relative to this file). Editing the
-# JSON updates both sides so the app resolves/formats exactly like the device.
-import json, os
+# The device header (main/field_registry_gen.h) is always written. The app C++
+# header path is passed as argv[1] by the dashboard's CMake (the app lives in a
+# separate repo and consumes this via the firmware submodule); with no argument
+# it falls back to the in-tree path and is skipped if that dir doesn't exist.
+import json, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 JSON = os.path.join(ROOT, "main", "field_registry.json")
 OUT_H = os.path.join(ROOT, "main", "field_registry_gen.h")
-OUT_HPP = os.path.join(ROOT, "pith-dashboard", "src", "field_registry_gen.hpp")
+OUT_HPP = sys.argv[1] if len(sys.argv) > 1 \
+    else os.path.join(ROOT, "pith-dashboard", "src", "field_registry_gen.hpp")
 
 BANNER = ("// AUTO-GENERATED from main/field_registry.json by tools/gen_field_registry.py.\n"
           "// Do not edit by hand.")
@@ -100,10 +103,13 @@ def main():
            "    return FIELD_NONE;",
            "}",
            ""]
-    with open(OUT_HPP, "w") as f:
-        f.write("\n".join(hpp))
-
-    print("generated field_registry_gen.h + field_registry_gen.hpp ({} fields)".format(len(fields)))
+    hpp_dir = os.path.dirname(OUT_HPP) or "."
+    if os.path.isdir(hpp_dir):
+        with open(OUT_HPP, "w") as f:
+            f.write("\n".join(hpp))
+        print("generated field_registry_gen.h + field_registry_gen.hpp ({} fields)".format(len(fields)))
+    else:
+        print("generated field_registry_gen.h ({} fields); skipped app hpp (no {})".format(len(fields), hpp_dir))
 
 
 if __name__ == "__main__":
