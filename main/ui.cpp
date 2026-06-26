@@ -19,7 +19,7 @@ int  ui_ota_pct(void);      // OTA progress 0..100
 #include <cstdio>
 #include <cstring>
 
-#define FW_VERSION "0.9.1"
+#define FW_VERSION "0.9.2"
 
 // ---- palette (RGB565) ----
 static constexpr uint16_t C_BG     = 0x0841;

@@ -229,7 +229,7 @@ static void handle_line(int itf, const char *line)
         int button_pages = prof ? prof->page_count : 0;   // actual configured pages, not a constant
         char cap[560];
         snprintf(cap, sizeof(cap),
-            "{\"name\":\"Pith DDU\",\"fw\":\"0.9.1\",\"serial\":\"%s\",\"buttonPages\":%d,"
+            "{\"name\":\"Pith DDU\",\"fw\":\"0.9.2\",\"serial\":\"%s\",\"buttonPages\":%d,"
             "\"screens\":[{\"role\":\"main\",\"w\":480,\"h\":320,\"touch\":true},"
             "{\"role\":\"side\",\"w\":480,\"h\":320,\"touch\":true}],"
             "\"leds\":{\"rev\":12,\"tc\":2,\"abs\":2,\"separate\":true},"
