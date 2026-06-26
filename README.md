@@ -1,13 +1,20 @@
-# pithddu
+# pithddu-firmware
 
-SimHub sim-racing dashboard for an **ESP32-S3 (Seeed XIAO S3)** driving **two
-4" ST7796 SPI touch displays**, a **14-LED WS2812 rev/TC/ABS strip**, and an
+SimHub sim-racing dashboard firmware for an **ESP32-S3 (Seeed XIAO S3)** driving
+**two 4" ST7796 SPI touch displays**, a **WS2812 rev/TC/ABS strip**, and an
 on-screen **HID button box**. SimHub telemetry arrives over **USB CDC**; the
 same USB cable also enumerates a **HID gamepad** (composite device) so the game
 sees a controller for the touch buttons. It renders everything locally with
 **LovyanGFX**.
 
 Targets rF2 / Le Mans Ultimate, but any SimHub game works if you map the fields.
+
+> **Companion desktop app:** [pithddu-dashboard](https://github.com/lemonxah/pithddu-dashboard)
+> configures the device, builds/flashes this firmware, and can install a published
+> release straight onto the device. The two repos are **versioned independently**.
+>
+> **Single-screen tier:** ESP32-**S2** (`devkit_s2`, `s2_mini`) is supported for a
+> one-display build (4 MB flash, dual-OTA). Two displays need the S3's speed + PSRAM.
 
 ## Hardware
 
@@ -102,12 +109,9 @@ in-game (pit menu = "LCD up/down/inc/dec" + Request Pit; functions = lights,
 wipers, limiter, ignition, hybrid, ...).
 
 Button pages are **not hardcoded** — they come from a **profile** (per game).
-The firmware ships a default LMU/rF2 profile and persists pushed profiles to
-NVS. Edit and push profiles with the included PC app:
-
-- Open `tools/profile-editor/index.html` in **Chrome/Edge** (Web Serial).
-- Click **Connect**, design button pages on the 480×320 canvas, **Push to dash**.
-- The device applies it live and stores it; it survives reboots.
+The firmware ships a default LMU/rF2 profile and persists pushed profiles to NVS.
+Design and push button pages from the [dashboard app](https://github.com/lemonxah/pithddu-dashboard)'s
+**Buttons** screen; the device applies them live and they survive reboots.
 
 Wire format: the device accepts a one-line command `@P{json}` on the CDC port.
 `{json}` is `{"game":"...","pages":[{"name":"PIT","buttons":[{"x","y","w","h",
@@ -124,17 +128,27 @@ idf.py -p /dev/ttyACMx flash
 ```
 
 **Pick your controller** with `-DBOARD=<id>` (layers `boards/<id>.defaults` over the
-common config). Available: `xiao_s3` (default), `devkitc_s3`, `zero_s3`, `generic_s3`.
-Switching boards regenerates `sdkconfig`, so run `set-target` again first:
+common config — PSRAM mode, flash size, partition table). Switching board/target
+regenerates `sdkconfig`, so run `set-target` again first:
+
+| Board id | Chip | Notes |
+|---|---|---|
+| `xiao_s3` (default) | esp32s3 | Seeed XIAO S3, 8 MB, octal PSRAM |
+| `devkitc_s3` | esp32s3 | DevKitC-1, 8 MB, octal PSRAM |
+| `zero_s3` | esp32s3 | Waveshare S3-Zero |
+| `generic_s3` | esp32s3 | broad-compat quad PSRAM |
+| `devkit_s2` | esp32s2 | single-screen, 4 MB, `partitions_4mb.csv` |
+| `s2_mini` | esp32s2 | Lolin S2 Mini, single-screen |
 
 ```
-idf.py -DBOARD=devkitc_s3 set-target esp32s3
-idf.py -DBOARD=devkitc_s3 build
+idf.py -DBOARD=devkit_s2 set-target esp32s2
+idf.py -DBOARD=devkit_s2 build
 ```
 
-The desktop app's **Firmware** tab does this for you: pick the controller and hit
-**BUILD FIRMWARE** (needs `idf-env.sh` + ESP-IDF on the machine running the app),
-then **FLASH THIS BUILD** to OTA it over USB.
+The [dashboard app](https://github.com/lemonxah/pithddu-dashboard)'s **Firmware** tab
+does this for you: pick the controller and **BUILD FIRMWARE** (needs `idf-env.sh` +
+ESP-IDF on the machine running the app), **FLASH THIS BUILD** over USB, or pick a
+**published version** to download + flash.
 
 The USB port is the SimHub CDC link; **console logs go to UART0** (attach a
 3.3V USB-UART adapter to see them). Because the running firmware owns the
@@ -143,10 +157,29 @@ USB-OTG as a CDC device, esptool's auto-reset can't enter download mode — for 
 **RESET (R)**, release **BOOT**. It re-enumerates as `303a:1001` and flashes
 normally.
 
+## Releases & CI
+
+GitHub Actions (`.github/workflows/build.yml`) builds every board on each push and,
+on a **`v*` tag**, publishes a **GitHub Release** with per-board assets:
+`pithddu-<board>.bin` (bare app image for OTA) and `pithddu-<board>.zip`
+(bootloader + partition table + app + `flash.txt`). The dashboard's Firmware tab
+reads these releases so you can pick a version to flash.
+
+Cut a release with the [`just`](https://github.com/casey/just) recipe:
+
+```
+just release          # bump the patch of the latest vX.Y.Z tag
+just release 1.2.3    # tag exactly v1.2.3
+```
+
+It tags + pushes; CI does the rest. `FW_VERSION` (in `main/ui.cpp` and the `@CAP`
+reply in `main/simhub_main.c`) is what the device reports — bump it to match the tag.
+
 ## Desktop app + firmware updates (transport)
 
-The PC app (`pith-dashboard/`) talks to the device **only over the HID command
-channel (report id 2)** — never CDC — so the CDC port stays free for SimHub and
+The [dashboard app](https://github.com/lemonxah/pithddu-dashboard) talks to the
+device **only over the HID command channel (report id 2)** — never CDC — so the CDC
+port stays free for SimHub and
 **firmware updates always have a working transport** (OTA streams over HID in
 ~61-byte report chunks; slower than CDC but SimHub-safe). The connection card
 reads *"Connected · HID (SimHub-safe)"*.
