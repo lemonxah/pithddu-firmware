@@ -1,0 +1,7 @@
+# Espressif ESP32-S2-Saola / DevKitM (single-display tier). 4 MB flash + PSRAM.
+# S2 is single-core with no Octal PSRAM, so we don't set SPIRAM_MODE_OCT here.
+# PSRAM is still required for the 480x320x2 framebuffer (one screen).
+CONFIG_SPIRAM=y
+CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="4MB"
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_4mb.csv"

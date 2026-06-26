@@ -1,0 +1,10 @@
+# OTA-capable layout for the XIAO ESP32-S3 (8 MB flash).
+# Two app slots (ota_0 / ota_1) so the PC app can push updates over USB-CDC;
+# the firmware writes the new image to the inactive slot and reboots into it.
+# Name,     Type, SubType, Offset,    Size
+nvs,        data, nvs,     0x9000,    0x6000
+otadata,    data, ota,     0xf000,    0x2000
+phy_init,   data, phy,     0x11000,   0x1000
+ota_0,      app,  ota_0,   0x20000,   0x200000
+ota_1,      app,  ota_1,   0x220000,  0x200000
+storage,    data, spiffs,  0x420000,  0x3e0000
