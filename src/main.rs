@@ -6,6 +6,7 @@
 // commands on the HID report-id-2 channel. LEDs/display land in later phases.
 
 mod device;
+mod led;
 mod ota;
 mod state;
 mod usb;
@@ -25,6 +26,9 @@ fn main() {
 
     // Bring up the composite USB device (PHY + TinyUSB + device task).
     usb::init(serial);
+
+    // Rev/TC/ABS LED strip (own task: self-test + telemetry-driven shift lights).
+    led::spawn();
 
     // We booted and ran successfully — confirm this image so a just-OTA'd update
     // isn't rolled back on the next reset.

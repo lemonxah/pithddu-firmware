@@ -207,7 +207,10 @@ fn dispatch(t: Transport, line: &str) {
         return;
     }
     if let Some(rest) = line.strip_prefix("@SL") {
-        let ok = crate::state::with(|s| s.apply_car(rest));
+        let ok = crate::led::apply_car_json(rest);
+        if ok {
+            crate::state::with(|s| s.apply_car(rest));
+        }
         reply(t, if ok { "OK\n" } else { "ERR\n" });
         return;
     }
@@ -217,7 +220,10 @@ fn dispatch(t: Transport, line: &str) {
         return;
     }
     if let Some(rest) = line.strip_prefix("@C") {
-        let ok = crate::state::with(|s| s.apply_car(rest));
+        let ok = crate::led::apply_car_json(rest);
+        if ok {
+            crate::state::with(|s| s.apply_car(rest));
+        }
         reply(t, if ok { "OK\n" } else { "ERR\n" });
         return;
     }

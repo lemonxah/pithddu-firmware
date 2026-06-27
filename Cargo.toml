@@ -46,3 +46,9 @@ embuild = "0.33"
 [[package.metadata.esp-idf-sys.extra_components]]
 component_dirs = ["components/pith_usb"]
 bindings_header = "components/pith_usb/include/pith_usb.h"
+
+# WS2812/SK6812 LED strip driver (RMT backend). led_strip.h is a clean C API
+# (no FreeRTOS OSAL), so esp-idf-sys binds it directly into sys::*.
+[[package.metadata.esp-idf-sys.extra_components]]
+remote_component = { name = "espressif/led_strip", version = "~2.5.5" }
+bindings_header = "src/led_strip_bindings.h"
