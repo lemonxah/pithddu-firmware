@@ -1,0 +1,19 @@
+[build]
+target = "xtensa-esp32s3-espidf"
+
+[target.xtensa-esp32s3-espidf]
+linker = "ldproxy"
+runner = "espflash flash --monitor"
+# espidf_time64: ESP-IDF >= 5.x uses 64-bit time_t.
+rustflags = ["--cfg", "espidf_time64"]
+
+[unstable]
+build-std = ["std", "panic_abort"]
+
+[env]
+MCU = "esp32s3"
+# esp-idf-sys 0.36 supports ESP-IDF up to v5.3.x. The locally-installed IDFs
+# (5.4.4/5.5.4/6.0.1) are all too new, so let esp-idf-sys manage its own fully
+# recursive v5.3.x clone under .embuild/.
+ESP_IDF_VERSION = "v5.3.3"
+# sdkconfig.defaults + partitions.csv live at the repo root (auto-discovered).

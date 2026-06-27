@@ -1,0 +1,65 @@
+name: firmware
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # Host-side unit tests for the pure-logic core (parser / formatting / shift).
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo +stable test -p pith-core --target x86_64-unknown-linux-gnu
+
+  # Cross-compile the firmware for the XIAO ESP32-S3 and produce the app image.
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the esp Rust toolchain
+        uses: esp-rs/xtensa-toolchain@v1.5
+        with:
+          default: true
+          buildtargets: esp32s3
+          ldproxy: true
+
+      - name: Install espflash
+        run: cargo install espflash --locked
+
+      - name: Build (release)
+        run: cargo build --release
+
+      - name: Save app image
+        run: |
+          espflash save-image --chip esp32s3 \
+            target/xtensa-esp32s3-espidf/release/pithddu pithddu-xiao_s3.bin
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-xiao_s3
+          path: pithddu-xiao_s3.bin
+          if-no-files-found: error
+
+  release:
+    needs: [test, firmware]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Bare per-board app image the dashboard installs by board name.
+          files: dist/**/*.bin
+          generate_release_notes: true
+          fail_on_unmatched_files: true

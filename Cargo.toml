@@ -1,0 +1,59 @@
+[package]
+name = "pithddu"
+version = "0.9.5"
+edition = "2021"
+resolver = "2"
+rust-version = "1.77"
+description = "Pith DDU sim-racing dashboard firmware (ESP32-S3), Rust rewrite"
+repository = "https://github.com/lemonxah/pithddu-firmware"
+license = "MIT"
+
+[[bin]]
+name = "pithddu"
+path = "src/main.rs"
+
+[workspace]
+members = ["pith-core"]
+
+[profile.release]
+opt-level = "s"
+
+[profile.dev]
+debug = true
+opt-level = "z"
+
+[features]
+default = []
+
+# Board selection (only xiao_s3 implemented for now). Baked into @CAP as `board`.
+xiao_s3 = []
+
+[dependencies]
+log = "0.4"
+esp-idf-svc = "0.51"
+pith-core = { path = "pith-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Display stack (Phase 4): dual ST7796 on the shared SPI2 bus + on-device drawing.
+embedded-graphics = "0.8"
+embedded-hal = "1"
+mipidsi = "0.9"
+u8g2-fonts = "0.5"
+
+[build-dependencies]
+embuild = "0.33"
+
+# USB composite stack: a local C shim over raw `espressif/tinyusb`
+# (components/pith_usb), NOT esp_tinyusb (which can't be bindgen'd here — FreeRTOS
+# OSAL + packed/align walls; see the firmware-usb-bindgen memory). bindgen only
+# processes the shim's clean header (no tinyusb types) and merges its API into
+# esp_idf_svc::sys::*.
+[[package.metadata.esp-idf-sys.extra_components]]
+component_dirs = ["components/pith_usb"]
+bindings_header = "components/pith_usb/include/pith_usb.h"
+
+# WS2812/SK6812 LED strip driver (RMT backend). led_strip.h is a clean C API
+# (no FreeRTOS OSAL), so esp-idf-sys binds it directly into sys::*.
+[[package.metadata.esp-idf-sys.extra_components]]
+remote_component = { name = "espressif/led_strip", version = "~2.5.5" }
+bindings_header = "src/led_strip_bindings.h"
