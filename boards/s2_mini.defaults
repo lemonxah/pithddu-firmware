@@ -1,6 +1,0 @@
-# Lolin/Wemos S2 Mini (ESP32-S2FN4R2): 4 MB flash + 2 MB PSRAM. Single-display
-# tier. Same 4 MB OTA layout as the S2 DevKit.
-CONFIG_SPIRAM=y
-CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
-CONFIG_ESPTOOLPY_FLASHSIZE="4MB"
-CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_4mb.csv"

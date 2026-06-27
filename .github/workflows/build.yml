@@ -8,61 +8,46 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  # Host-side unit tests for the pure-logic core (parser / formatting / shift).
+  test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { board: xiao_s3,    target: esp32s3 }
-          - { board: devkitc_s3, target: esp32s3 }
-          - { board: devkit_s2,  target: esp32s2 }
-          - { board: s2_mini,    target: esp32s2 }
-    name: ${{ matrix.board }} (${{ matrix.target }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo +stable test -p pith-core --target x86_64-unknown-linux-gnu
+
+  # Cross-compile the firmware for the XIAO ESP32-S3 and produce the app image.
+  firmware:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build firmware
-        uses: espressif/esp-idf-ci-action@v1
+      - name: Install the esp Rust toolchain
+        uses: esp-rs/xtensa-toolchain@v1.5
         with:
-          esp_idf_version: release-v5.5
-          target: ${{ matrix.target }}
-          command: idf.py -DBOARD=${{ matrix.board }} build
+          default: true
+          buildtargets: esp32s3
+          ldproxy: true
 
-      - name: Package
+      - name: Install espflash
+        run: cargo install espflash --locked
+
+      - name: Build (release)
+        run: cargo build --release
+
+      - name: Save app image
         run: |
-          set -e
-          out="pithddu-${{ matrix.board }}"
-          mkdir -p "$out"
-          cp build/pithddu.bin "$out/"
-          cp build/bootloader/bootloader.bin "$out/"
-          cp build/partition_table/partition-table.bin "$out/"
-          cp build/ota_data_initial.bin "$out/"
-          cat > "$out/flash.txt" <<EOF
-          Flash ${{ matrix.board }} (${{ matrix.target }}) with esptool:
-
-            esptool.py -p <PORT> -b 460800 --chip ${{ matrix.target }} write_flash \\
-              0x0 bootloader.bin \\
-              0x8000 partition-table.bin \\
-              0xf000 ota_data_initial.bin \\
-              0x20000 pithddu.bin
-
-          Or, from the firmware repo:  idf.py -DBOARD=${{ matrix.board }} -p <PORT> flash
-          EOF
-          zip -r "$out.zip" "$out"
-          # Bare app image for OTA (the dashboard downloads this directly by board name).
-          cp build/pithddu.bin "$out.bin"
+          espflash save-image --chip esp32s3 \
+            target/xtensa-esp32s3-espidf/release/pithddu pithddu-xiao_s3.bin
 
       - uses: actions/upload-artifact@v4
         with:
-          name: firmware-${{ matrix.board }}
-          path: |
-            pithddu-${{ matrix.board }}.zip
-            pithddu-${{ matrix.board }}.bin
+          name: firmware-xiao_s3
+          path: pithddu-xiao_s3.bin
           if-no-files-found: error
 
   release:
-    needs: build
+    needs: [test, firmware]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     permissions:
@@ -74,8 +59,7 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/**/*.zip
-            dist/**/*.bin
+          # Bare per-board app image the dashboard installs by board name.
+          files: dist/**/*.bin
           generate_release_notes: true
           fail_on_unmatched_files: true

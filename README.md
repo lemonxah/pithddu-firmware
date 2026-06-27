@@ -120,35 +120,28 @@ Send `?` for a status line.
 
 ## Build & flash
 
-```
-source ./idf-env.sh
-idf.py set-target esp32s3      # once
-idf.py build
-idf.py -p /dev/ttyACMx flash
-```
-
-**Pick your controller** with `-DBOARD=<id>` (layers `boards/<id>.defaults` over the
-common config — PSRAM mode, flash size, partition table). Switching board/target
-regenerates `sdkconfig`, so run `set-target` again first:
-
-| Board id | Chip | Notes |
-|---|---|---|
-| `xiao_s3` (default) | esp32s3 | Seeed XIAO S3, 8 MB, octal PSRAM |
-| `devkitc_s3` | esp32s3 | DevKitC-1, 8 MB, octal PSRAM |
-| `zero_s3` | esp32s3 | Waveshare S3-Zero |
-| `generic_s3` | esp32s3 | broad-compat quad PSRAM |
-| `devkit_s2` | esp32s2 | single-screen, 4 MB, `partitions_4mb.csv` |
-| `s2_mini` | esp32s2 | Lolin S2 Mini, single-screen |
+This firmware is **Rust** (Cargo + esp-idf-sys, std), targeting the **ESP32-S3
+(XIAO S3)**. Install the esp Rust toolchain once with [`espup`](https://github.com/esp-rs/espup)
+(`espup install`), which writes `~/export-esp.sh`.
 
 ```
-idf.py -DBOARD=devkit_s2 set-target esp32s2
-idf.py -DBOARD=devkit_s2 build
+source ~/export-esp.sh
+just build                      # cargo build
+just flash                      # build release + espflash flash --monitor
+just test                       # host unit tests (pith-core)
+just image                      # save the bare app .bin (what the dashboard installs)
 ```
+
+(Or use `cargo` directly: `cargo build` / `espflash flash --monitor target/xtensa-esp32s3-espidf/release/pithddu`.)
+
+The first build checks out and compiles ESP-IDF v5.3.3 under `.embuild/` (a few
+minutes); subsequent builds are incremental. Only the **XIAO S3** board is
+currently supported by the Rust port (the legacy multi-board C build is in git
+history before the `rust-rewrite` branch).
 
 The [dashboard app](https://github.com/lemonxah/pithddu-dashboard)'s **Firmware** tab
-does this for you: pick the controller and **BUILD FIRMWARE** (needs `idf-env.sh` +
-ESP-IDF on the machine running the app), **FLASH THIS BUILD** over USB, or pick a
-**published version** to download + flash.
+can **FLASH THIS BUILD** over USB or download + flash a **published version**
+(CI publishes a bare `pithddu-xiao_s3.bin` per release).
 
 The USB port is the SimHub CDC link; **console logs go to UART0** (attach a
 3.3V USB-UART adapter to see them). Because the running firmware owns the

@@ -1,8 +1,0 @@
-# Waveshare ESP32-S3-Zero (ESP32-S3FH4R2): Quad PSRAM.
-# NOTE: this module has only 4 MB on-package flash, while partitions.csv needs
-# 8 MB (dual OTA app slots). Pair it with an 8 MB module/variant, or shrink the
-# partition table, for the build to fit.
-CONFIG_SPIRAM_MODE_QUAD=y
-CONFIG_SPIRAM_SPEED_80M=y
-CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
-CONFIG_ESPTOOLPY_FLASHSIZE="8MB"

@@ -1,8 +1,37 @@
-# pithddu-firmware tasks. Run `just` to list.
+# pithddu-firmware tasks (Rust / esp-idf). Run `just` to list.
+# Source the esp env first:  source ~/export-esp.sh
 set shell := ["bash", "-uc"]
 
 default:
     @just --list
+
+# Build the firmware (debug).
+build:
+    cargo build
+
+# Build optimized.
+release-build:
+    cargo build --release
+
+# Flash + monitor over USB (espflash). PORT defaults to autodetect.
+flash port="":
+    cargo build --release
+    espflash flash --monitor {{ if port != "" { "-p " + port } else { "" } }} \
+        target/xtensa-esp32s3-espidf/release/pithddu
+
+# Serial monitor only.
+monitor port="":
+    espflash monitor {{ if port != "" { "-p " + port } else { "" } }}
+
+# Host unit tests for the pure-logic core.
+test:
+    cargo +stable test -p pith-core --target x86_64-unknown-linux-gnu
+
+# Save the bare app image (what the dashboard installs by board name).
+image:
+    cargo build --release
+    espflash save-image --chip esp32s3 \
+        target/xtensa-esp32s3-espidf/release/pithddu pithddu-xiao_s3.bin
 
 # Cut a release by tagging + pushing (CI builds the bins and publishes the GitHub Release).
 #   just release           -> bump the patch of the latest vX.Y.Z tag (0.1.0 if none)
