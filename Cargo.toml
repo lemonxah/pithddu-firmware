@@ -36,7 +36,11 @@ pith-core = { path = "pith-core" }
 [build-dependencies]
 embuild = "0.33"
 
-# NOTE (Phase 2): the USB composite stack is provided by a local C shim over raw
-# `espressif/tinyusb` (components/pith_usb), NOT esp_tinyusb. esp_tinyusb cannot be
-# bindgen'd here (FreeRTOS-OSAL + packed/align walls — see the firmware-usb-bindgen
-# memory). The shim is added as an extra component when Phase 2 lands.
+# USB composite stack: a local C shim over raw `espressif/tinyusb`
+# (components/pith_usb), NOT esp_tinyusb (which can't be bindgen'd here — FreeRTOS
+# OSAL + packed/align walls; see the firmware-usb-bindgen memory). bindgen only
+# processes the shim's clean header (no tinyusb types) and merges its API into
+# esp_idf_svc::sys::*.
+[[package.metadata.esp-idf-sys.extra_components]]
+component_dirs = ["components/pith_usb"]
+bindings_header = "components/pith_usb/include/pith_usb.h"

@@ -1,9 +1,9 @@
 # --- pithddu defaults (ESP32-S3, Rust build) ---
 
-# Console over USB-Serial-JTAG during bring-up (no TinyUSB yet). Phase 2 brings up
-# the composite USB stack on the USB-OTG peripheral (shares the D+/D- pins), so
-# console moves to UART0 then (CONFIG_ESP_CONSOLE_UART_DEFAULT + a USB-UART adapter).
-CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+# Console on UART0: the native USB-OTG peripheral is owned by our TinyUSB
+# composite device (CDC + HID) and shares the D+/D- pins with USB-Serial-JTAG, so
+# console can't use USB. Attach a 3.3V USB-UART adapter to UART0 to see logs.
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
 
 # Headroom for the main task.
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
