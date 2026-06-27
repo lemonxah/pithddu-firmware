@@ -1,9 +1,8 @@
 # --- pithddu defaults (ESP32-S3, Rust build) ---
 
-# Phase 0 console: use the S3's USB-Serial-JTAG controller so boot logs appear
-# over the USB-C cable during bring-up. NOTE: Phase 2 brings up TinyUSB on the
-# USB-OTG peripheral (shares the same D+/D- pins), so console moves to UART0 then
-# (CONFIG_ESP_CONSOLE_UART_DEFAULT) — attach a 3.3V USB-UART adapter to UART0.
+# Console over USB-Serial-JTAG during bring-up (no TinyUSB yet). Phase 2 brings up
+# the composite USB stack on the USB-OTG peripheral (shares the D+/D- pins), so
+# console moves to UART0 then (CONFIG_ESP_CONSOLE_UART_DEFAULT + a USB-UART adapter).
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 
 # Headroom for the main task.
@@ -17,8 +16,12 @@ CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_FREERTOS_HZ=1000
 
-# 8 MB flash. (Custom dual-OTA partition table + rollback are wired in Phase 2,
-# where OTA matters — esp-idf-sys needs the partition CSV reachable from its
-# synthetic project dir, handled then. Phase 0 uses the default partition table.)
+# 8 MB flash with IDF's built-in dual-OTA partition table (nvs + otadata + two
+# app slots) so the dashboard can push OTA updates over USB; rollback on a bad
+# image so a failed update can't brick the dash. We use TWO_OTA (not a custom
+# CSV) because the firmware only needs NVS + OTA (no SPIFFS), and it avoids the
+# esp-idf-sys synthetic-project-dir CSV path issue.
 CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
 CONFIG_ESPTOOLPY_FLASHSIZE="8MB"
+CONFIG_PARTITION_TABLE_TWO_OTA=y
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y

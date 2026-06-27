@@ -19,7 +19,7 @@ members = ["pith-core"]
 opt-level = "s"
 
 [profile.dev]
-debug = true       # symbols are nice for debugging wasm
+debug = true
 opt-level = "z"
 
 [features]
@@ -35,3 +35,8 @@ pith-core = { path = "pith-core" }
 
 [build-dependencies]
 embuild = "0.33"
+
+# NOTE (Phase 2): the USB composite stack is provided by a local C shim over raw
+# `espressif/tinyusb` (components/pith_usb), NOT esp_tinyusb. esp_tinyusb cannot be
+# bindgen'd here (FreeRTOS-OSAL + packed/align walls — see the firmware-usb-bindgen
+# memory). The shim is added as an extra component when Phase 2 lands.
