@@ -12,6 +12,9 @@ license = "MIT"
 name = "pithddu"
 path = "src/main.rs"
 
+[workspace]
+members = ["pith-core"]
+
 [profile.release]
 opt-level = "s"
 
@@ -28,8 +31,7 @@ xiao_s3 = []
 [dependencies]
 log = "0.4"
 esp-idf-svc = "0.51"
+pith-core = { path = "pith-core" }
 
 [build-dependencies]
 embuild = "0.33"
-# serde_json is used by build.rs for field-registry codegen (added in Phase 1).
-serde_json = "1"
