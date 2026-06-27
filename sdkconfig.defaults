@@ -1,31 +1,24 @@
-# --- pithddu defaults (ESP32-S3) ---
-# Console log goes to UART0. The native USB peripheral is reserved for our
-# TinyUSB CDC link to SimHub (the Custom Serial port), so console can't share
-# it. Attach a 3.3V USB-UART adapter to UART0 to see logs.
-CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+# --- pithddu defaults (ESP32-S3, Rust build) ---
 
-# TinyUSB composite device: CDC-ACM (SimHub Custom Serial) + HID gamepad
-# (the on-screen touch button box). Custom descriptors live in usb_descriptors.c.
-CONFIG_TINYUSB_CDC_ENABLED=y
-CONFIG_TINYUSB_CDC_COUNT=1
-CONFIG_TINYUSB_HID_COUNT=1
-CONFIG_TINYUSB_CDC_RX_BUFSIZE=4096
+# Phase 0 console: use the S3's USB-Serial-JTAG controller so boot logs appear
+# over the USB-C cable during bring-up. NOTE: Phase 2 brings up TinyUSB on the
+# USB-OTG peripheral (shares the same D+/D- pins), so console moves to UART0 then
+# (CONFIG_ESP_CONSOLE_UART_DEFAULT) — attach a 3.3V USB-UART adapter to UART0.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 
-# Headroom for parsing + UART work.
-CONFIG_ESP_MAIN_TASK_STACK_SIZE=6144
+# Headroom for the main task.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
 
 # 8 MB Octal PSRAM on the XIAO ESP32-S3 (ESP32-S3R8) — holds the two display
-# framebuffers (480x320x2 = 300 KB each).
+# framebuffers (480x320x2 = 300 KB each, added in Phase 4).
 CONFIG_SPIRAM=y
 CONFIG_SPIRAM_MODE_OCT=y
 CONFIG_SPIRAM_SPEED_80M=y
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_FREERTOS_HZ=1000
 
-# OTA over USB-CDC: 8 MB flash, dual app slots (partitions.csv), rollback on a
-# bad image so a failed update can't brick the dash.
+# 8 MB flash. (Custom dual-OTA partition table + rollback are wired in Phase 2,
+# where OTA matters — esp-idf-sys needs the partition CSV reachable from its
+# synthetic project dir, handled then. Phase 0 uses the default partition table.)
 CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
 CONFIG_ESPTOOLPY_FLASHSIZE="8MB"
-CONFIG_PARTITION_TABLE_CUSTOM=y
-CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
-CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y

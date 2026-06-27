@@ -1,0 +1,35 @@
+[package]
+name = "pithddu"
+version = "0.9.5"
+edition = "2021"
+resolver = "2"
+rust-version = "1.77"
+description = "Pith DDU sim-racing dashboard firmware (ESP32-S3), Rust rewrite"
+repository = "https://github.com/lemonxah/pithddu-firmware"
+license = "MIT"
+
+[[bin]]
+name = "pithddu"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = "s"
+
+[profile.dev]
+debug = true       # symbols are nice for debugging wasm
+opt-level = "z"
+
+[features]
+default = []
+
+# Board selection (only xiao_s3 implemented for now). Baked into @CAP as `board`.
+xiao_s3 = []
+
+[dependencies]
+log = "0.4"
+esp-idf-svc = "0.51"
+
+[build-dependencies]
+embuild = "0.33"
+# serde_json is used by build.rs for field-registry codegen (added in Phase 1).
+serde_json = "1"
