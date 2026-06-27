@@ -6,6 +6,7 @@
 // commands on the HID report-id-2 channel. LEDs/display land in later phases.
 
 mod device;
+mod display;
 mod led;
 mod ota;
 mod state;
@@ -29,6 +30,9 @@ fn main() {
 
     // Rev/TC/ABS LED strip (own task: self-test + telemetry-driven shift lights).
     led::spawn();
+
+    // Displays (own task). Phase 4: single-panel bring-up.
+    display::spawn();
 
     // We booted and ran successfully — confirm this image so a just-OTA'd update
     // isn't rolled back on the next reset.
