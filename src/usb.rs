@@ -115,6 +115,12 @@ pub extern "C" fn pith_on_hid_tx_complete() {
 // ---- line accumulation + dispatch ----
 
 fn feed(t: Transport, bytes: &[u8]) {
+    // During an OTA the owning transport's bytes are raw image data, not lines.
+    if crate::ota::ACTIVE.load(std::sync::atomic::Ordering::Relaxed)
+        && crate::ota::feed(t, bytes)
+    {
+        return;
+    }
     let lock = match t {
         Transport::Cdc => &CDC_LINE,
         Transport::Hid => &HID_LINE,
@@ -148,40 +154,119 @@ fn feed(t: Transport, bytes: &[u8]) {
     }
 }
 
-/// Minimal Phase-2a dispatcher: enough for the dashboard to connect + store
-/// telemetry. Full command set (config pushes, OTA, etc.) arrives in 2b.
+/// Full command dispatcher (everything except OTA, which is handled as raw bytes
+/// in `feed`, Phase 2b-2). Command-prefix order mirrors the legacy firmware so
+/// shared prefixes (@PINS/@P, @BS/@B, @CAP/@CM/@C, @RG/@RS, @SL/@S) resolve right.
 fn dispatch(t: Transport, line: &str) {
     if line.is_empty() {
         return;
     }
     if line == "?" {
-        let tel = *TELEM.lock().unwrap();
-        reply(
-            t,
-            &format!(
-                "esp-simhub | g={} s={} r={}/{} (rust phase2a)\n",
-                tel.gear as char, tel.speed_kmh, tel.rpm, tel.max_rpm
-            ),
-        );
+        reply(t, &status_line());
+        return;
+    }
+    if let Some(rest) = line.strip_prefix("@PINS") {
+        let ok = crate::state::with(|s| s.apply_pins(rest));
+        reply(t, if ok { "OK\n" } else { "ERR\n" });
+        return;
+    }
+    if let Some(rest) = line.strip_prefix("@P") {
+        let ok = crate::state::with(|s| s.apply_profile(rest));
+        reply(t, if ok { "OK\n" } else { "ERR\n" });
+        return;
+    }
+    if let Some(rest) = line.strip_prefix("@BS") {
+        let ok = crate::state::with(|s| s.apply_buttons(rest));
+        reply(t, if ok { "OK\n" } else { "ERR\n" });
+        return;
+    }
+    if let Some(rest) = line.strip_prefix("@B") {
+        crate::state::with(|s| s.set_brightness(rest.trim().parse().unwrap_or(0)));
+        reply(t, "OK\n");
         return;
     }
     if line.starts_with("@CAP") {
-        reply(t, &cap_json());
+        let cap = crate::state::with(|s| s.cap_json(crate::device::serial()));
+        reply(t, &cap);
         return;
     }
     if line == "@T" {
         reply(t, &telem_reply());
         return;
     }
-    if line.starts_with('@') {
-        // Placeholder ACK for config pushes until 2b implements them.
+    if line.starts_with("@RG") {
+        // Must contain OK/READY AND the {json} body (the app checks both).
+        let j = crate::state::with(|s| s.race_json.clone());
+        let body = if j.is_empty() { "{}" } else { &j };
+        reply(t, &format!("OK {body}\n"));
+        return;
+    }
+    if let Some(rest) = line.strip_prefix("@RS") {
+        let ok = crate::state::with(|s| s.apply_race(rest));
+        reply(t, if ok { "OK\n" } else { "ERR\n" });
+        return;
+    }
+    if let Some(rest) = line.strip_prefix("@SL") {
+        let ok = crate::state::with(|s| s.apply_car(rest));
+        reply(t, if ok { "OK\n" } else { "ERR\n" });
+        return;
+    }
+    if let Some(rest) = line.strip_prefix("@CM") {
+        crate::state::with(|s| s.set_car_model(rest));
         reply(t, "OK\n");
         return;
     }
-    // Otherwise: a SimHub '$' telemetry frame (or '@CM' handled in 2b).
+    if let Some(rest) = line.strip_prefix("@C") {
+        let ok = crate::state::with(|s| s.apply_car(rest));
+        reply(t, if ok { "OK\n" } else { "ERR\n" });
+        return;
+    }
+    if let Some(rest) = line.strip_prefix("@OTA") {
+        crate::ota::begin(t, rest.trim().parse().unwrap_or(0));
+        return;
+    }
+    if line.starts_with("@S") {
+        let (ok, bad) = crate::state::with(|s| {
+            let r = (s.frames_ok, s.frames_bad);
+            s.frames_ok = 0;
+            s.frames_bad = 0;
+            r
+        });
+        reply(t, &format!("ok={ok} bad={bad}\n"));
+        return;
+    }
+    if line.starts_with('@') {
+        reply(t, "OK\n"); // unknown @-command: ack
+        return;
+    }
+    // Otherwise: a SimHub '$' telemetry frame.
     if let Some(tel) = simhub::parse_line(line) {
         *TELEM.lock().unwrap() = tel;
+        crate::state::with(|s| s.frames_ok += 1);
+    } else {
+        crate::state::with(|s| s.frames_bad += 1);
     }
+}
+
+/// `?` status reply, in the key=value shape the dashboard parses (g/s/r/fuel/
+/// delta/bright/car). `car=` is last so the parser can read it to end-of-line.
+fn status_line() -> String {
+    let tel = *TELEM.lock().unwrap();
+    let (bright, car) = crate::state::with(|s| (s.brightness, s.car_model.clone()));
+    let heap = unsafe { sys::esp_get_free_heap_size() };
+    format!(
+        "esp-simhub | g={} s={} r={}/{} fuel={}.{} delta={} bright={} heap={} car={}\n",
+        tel.gear as char,
+        tel.speed_kmh,
+        tel.rpm,
+        tel.max_rpm,
+        tel.fuel_dl / 10,
+        (tel.fuel_dl % 10).abs(),
+        tel.delta_ms,
+        bright,
+        heap,
+        car,
+    )
 }
 
 /// `@T` reply: gear char then every registry field value in id order.
@@ -198,19 +283,9 @@ fn telem_reply() -> String {
     s
 }
 
-/// Minimal capability handshake. The dashboard's connect probe only requires the
-/// reply to contain "name"; the full pins/leds/screens block lands in 2b.
-fn cap_json() -> String {
-    let board = option_env!("PITHDDU_BOARD").unwrap_or("xiao_s3");
-    format!(
-        "{{\"name\":\"Pith DDU\",\"fw\":\"0.9.5\",\"board\":\"{board}\",\"serial\":\"{}\",\"buttonPages\":0}}\n",
-        crate::device::serial()
-    )
-}
-
 // ---- replies ----
 
-fn reply(t: Transport, s: &str) {
+pub(crate) fn reply(t: Transport, s: &str) {
     match t {
         Transport::Cdc => {
             unsafe {
