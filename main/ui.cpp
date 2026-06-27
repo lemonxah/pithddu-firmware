@@ -19,7 +19,7 @@ int  ui_ota_pct(void);      // OTA progress 0..100
 #include <cstdio>
 #include <cstring>
 
-#define FW_VERSION "0.9.3"
+#define FW_VERSION "0.9.4"
 
 // ---- palette (RGB565) ----
 static constexpr uint16_t C_BG     = 0x0841;
@@ -729,9 +729,7 @@ static void touch_d2(int x, int y)
     for (int i = 0; i < pg->count; i++) {
         const ui_button_t *bt = &pg->buttons[i];
         if (x >= bt->x && x < bt->x + bt->w && yb >= bt->y && yb < bt->y + bt->h) {
-            if (bt->action == UI_ACT_HID)
-                hid_button_pulse(bt->param);            // momentary tap
-            else if (bt->action == UI_ACT_HID_HOLD)
+            if (bt->action == UI_ACT_HID || bt->action == UI_ACT_HID_HOLD)
                 hid_button_set(bt->param, true);        // press now, release on lift
             if (bt->toggle && pp < UI_PROFILE_PG && i < UI_PAGE_BTNS)
                 s_btn_on[pp][i] = !s_btn_on[pp][i];     // latch toggle state
@@ -871,7 +869,7 @@ void ui_tick(const simhub_telemetry_t *t)
                     const ui_button_page_t *rpg = &ap->pages[s_press_page];
                     if (s_press_btn < rpg->count) {
                         const ui_button_t *rbt = &rpg->buttons[s_press_btn];
-                        if (rbt->action == UI_ACT_HID_HOLD)
+                        if (rbt->action == UI_ACT_HID || rbt->action == UI_ACT_HID_HOLD)
                             hid_button_set(rbt->param, false);
                     }
                 }
