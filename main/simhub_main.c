@@ -232,7 +232,7 @@ static void handle_line(int itf, const char *line)
 #endif
         char cap[600];
         snprintf(cap, sizeof(cap),
-            "{\"name\":\"Pith DDU\",\"fw\":\"0.9.2\",\"board\":\"%s\",\"serial\":\"%s\",\"buttonPages\":%d,"
+            "{\"name\":\"Pith DDU\",\"fw\":\"0.9.3\",\"board\":\"%s\",\"serial\":\"%s\",\"buttonPages\":%d,"
             "\"screens\":[{\"role\":\"main\",\"w\":480,\"h\":320,\"touch\":true},"
             "{\"role\":\"side\",\"w\":480,\"h\":320,\"touch\":true}],"
             "\"leds\":{\"rev\":12,\"tc\":2,\"abs\":2,\"separate\":true},"

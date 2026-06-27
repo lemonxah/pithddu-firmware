@@ -19,7 +19,7 @@ int  ui_ota_pct(void);      // OTA progress 0..100
 #include <cstdio>
 #include <cstring>
 
-#define FW_VERSION "0.9.2"
+#define FW_VERSION "0.9.3"
 
 // ---- palette (RGB565) ----
 static constexpr uint16_t C_BG     = 0x0841;
@@ -729,8 +729,10 @@ static void touch_d2(int x, int y)
     for (int i = 0; i < pg->count; i++) {
         const ui_button_t *bt = &pg->buttons[i];
         if (x >= bt->x && x < bt->x + bt->w && yb >= bt->y && yb < bt->y + bt->h) {
-            if (bt->action == UI_ACT_HID || bt->action == UI_ACT_HID_HOLD)
-                hid_button_pulse(bt->param);
+            if (bt->action == UI_ACT_HID)
+                hid_button_pulse(bt->param);            // momentary tap
+            else if (bt->action == UI_ACT_HID_HOLD)
+                hid_button_set(bt->param, true);        // press now, release on lift
             if (bt->toggle && pp < UI_PROFILE_PG && i < UI_PAGE_BTNS)
                 s_btn_on[pp][i] = !s_btn_on[pp][i];     // latch toggle state
             s_press_btn = i;
@@ -861,7 +863,23 @@ void ui_tick(const simhub_telemetry_t *t)
         bool changed = (d2 != s_t2_down);                // touch down/up edge
         int prev = s_d2;
         if (d2 && !s_t2_down) touch_d2(tx, ty);          // press
-        if (!d2 && s_t2_down) s_btn_held = false;        // release -> drop the highlight
+        if (!d2 && s_t2_down) {                          // release
+            // release any held HID button before dropping the highlight
+            if (s_press_btn >= 0 && s_press_page >= 0) {
+                const ui_profile_t *ap = ui_active_profile();
+                if (s_press_page < ap->page_count) {
+                    const ui_button_page_t *rpg = &ap->pages[s_press_page];
+                    if (s_press_btn < rpg->count) {
+                        const ui_button_t *rbt = &rpg->buttons[s_press_btn];
+                        if (rbt->action == UI_ACT_HID_HOLD)
+                            hid_button_set(rbt->param, false);
+                    }
+                }
+            }
+            s_btn_held = false;                          // drop the highlight
+            s_press_btn = -1;
+            s_press_page = -1;
+        }
         s_t2_down = d2;
         if (s_d2 >= d2_page_count()) s_d2 = 0;           // clamp if page count shrank
         // Signature of the current page's sync-from-game toggle states, so the
