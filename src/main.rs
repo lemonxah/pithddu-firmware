@@ -7,9 +7,12 @@
 
 mod device;
 mod display;
+mod hid;
 mod led;
 mod ota;
+mod sim;
 mod state;
+mod ui;
 mod usb;
 
 use std::thread::sleep;
@@ -30,8 +33,10 @@ fn main() {
 
     // Rev/TC/ABS LED strip (own task: self-test + telemetry-driven shift lights).
     led::spawn();
-
-    // Displays (own task). Phase 4: single-panel bring-up.
+    // HID gamepad service + bench-test sim generator.
+    hid::spawn();
+    sim::spawn();
+    // Displays + touch + UI (own task).
     display::spawn();
 
     // We booted and ran successfully — confirm this image so a just-OTA'd update

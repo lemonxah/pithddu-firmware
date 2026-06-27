@@ -245,9 +245,11 @@ fn dispatch(t: Transport, line: &str) {
         reply(t, "OK\n"); // unknown @-command: ack
         return;
     }
-    // Otherwise: a SimHub '$' telemetry frame.
+    // Otherwise: a SimHub '$' telemetry frame. Sim mode overrides real telemetry.
     if let Some(tel) = simhub::parse_line(line) {
-        *TELEM.lock().unwrap() = tel;
+        if !crate::state::with(|s| s.sim_on) {
+            *TELEM.lock().unwrap() = tel;
+        }
         crate::state::with(|s| s.frames_ok += 1);
     } else {
         crate::state::with(|s| s.frames_bad += 1);

@@ -23,9 +23,19 @@ struct Ota {
     handle: sys::esp_ota_handle_t,
     part: usize, // *const esp_partition_t kept as usize (Send-safe)
     remaining: i32,
+    total: i32,
     acc: i32,
     itf: Transport,
     last_us: i64,
+}
+
+/// Coarse OTA progress 0..100 for the on-screen "updating" bar (0 if inactive).
+pub fn progress_pct() -> i32 {
+    let g = OTA.lock().unwrap();
+    match g.as_ref() {
+        Some(o) if o.total > 0 => ((o.total - o.remaining) * 100 / o.total).clamp(0, 100),
+        _ => 0,
+    }
 }
 
 static OTA: Mutex<Option<Ota>> = Mutex::new(None);
@@ -55,6 +65,7 @@ pub fn begin(itf: Transport, size: i32) {
             handle,
             part: part as usize,
             remaining: size,
+            total: size,
             acc: 0,
             itf,
             last_us: now_us(),

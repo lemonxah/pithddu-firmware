@@ -36,7 +36,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Display stack (Phase 4): dual ST7796 on the shared SPI2 bus + on-device drawing.
 embedded-graphics = "0.8"
+embedded-hal = "1"
 mipidsi = "0.9"
+u8g2-fonts = "0.5"
 
 [build-dependencies]
 embuild = "0.33"
